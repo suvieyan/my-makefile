@@ -1,0 +1,27 @@
+TARGET := hello.out
+CC := gcc
+
+
+$(TARGET):func.o main.o
+	$(CC) -o $@ $^
+
+func.o:func.c
+	$(CC) -o $@ -c $^
+
+main.o:main.c
+	$(CC) -o $@ -c $^
+
+.PHONY : rebuild clean all
+
+rebuild: clean all
+
+all : $(TARGET)
+
+clean:
+	rm *.o $(TARGET)
+
+
+# 执行结果
+# gcc -o func.o -c func.c
+# gcc -o main.o -c main.c
+# gcc -o hello.out func.o main.o

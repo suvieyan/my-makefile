@@ -1,0 +1,20 @@
+JAVA_HOME := java home 
+export var := yan wallis
+new := wallis
+
+test:
+	@echo "JAVA_HOME=>$(JAVA_HOME)"
+	@echo "make author file ..."
+	@$(MAKE) -f makefile.2
+	@$(MAKE) -f makefile.2 new:=$(new)
+
+# 执行结果
+# yandeMacBook-Pro:04变量高级 yanwallis$ make
+# JAVA_HOME=>java home 
+# make author file ...
+# JAVA_HOME=>my java home 
+# var=> yan wallis # export 临时创建环境变量传递
+# new=>
+# JAVA_HOME=>my java home 
+# var=>yan wallis
+# new=>wallis

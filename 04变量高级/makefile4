@@ -1,0 +1,9 @@
+override var := test
+test :
+	@echo "var => $(var)"
+
+# 执行结果
+# yandeMacBook-Pro:04变量高级 yanwallis$ make
+# var => test
+# yandeMacBook-Pro:04变量高级 yanwallis$ make var:=cmd
+# var => test

@@ -1,0 +1,21 @@
+var := yan wallis
+test : var := test-var
+
+test:
+	@echo "test:"
+	@echo "var => $(var)"
+
+test1:
+	@echo "test1:"
+	@echo "var => $(var)"
+
+# 执行结果
+# yandeMacBook-Pro:04变量高级 yanwallis$ make
+# test:
+# var => test-var
+# yandeMacBook-Pro:04变量高级 yanwallis$ make test1
+# test1:
+# var => yan wallis
+
+
+	

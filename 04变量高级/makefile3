@@ -1,0 +1,10 @@
+hm := hello makefile
+
+test:
+	@echo "hm=>$(hm)"
+
+# 执行结果
+# yandeMacBook-Pro:04变量高级 yanwallis$ make
+# hm=>hello makefile
+# yandeMacBook-Pro:04变量高级 yanwallis$ make hm:=cmd
+# hm=>cmd

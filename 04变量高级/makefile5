@@ -1,0 +1,18 @@
+define foo
+I'm fool!
+endef
+
+override define cmd
+	@echo "run cmd ls..."
+	@ls
+endef
+
+test :
+	@echo "foo=>$(foo)"
+	$(cmd)
+
+# 执行结果
+# yandeMacBook-Pro:04变量高级 yanwallis$ make foo:=verfoo
+# foo=>verfoo
+# run cmd ls...
+# const.c         func.c          main.c          makefile        makefile1       makefile2       makefile3       makefile4

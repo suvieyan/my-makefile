@@ -1,0 +1,16 @@
+src1 := a.cc b.cc c.cc
+obj1 := $(src1:cc=o) 
+test1:
+	@echo "obj1=>$(obj1)"
+
+# make test1
+# obj1=>a.o b.o c.o 
+
+src2 := a1b.c a2b.c ag3b.c
+obj2 := $(src2:a%b.c=x%y) 
+test2:
+	@echo "obj2=>$(obj2)"
+
+# make test2
+# obj2=>x1y x2y xg3y 
+

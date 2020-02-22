@@ -1,0 +1,23 @@
+TARGET := hello.out
+CC := gcc
+OBJS := func.o main.o const.o
+
+$(TARGET):$(OBJS)
+	$(CC) -o $@ $^
+
+$(OBJS): %.o : %.c
+	$(CC) -o $@ -c $^
+
+.PHONY : rebuild clean all
+
+rebuild: clean all
+
+all : $(TARGET)
+
+clean:
+	$(RM) *.o $(TARGET)
+
+# 执行结果
+# gcc -o func.o -c func.c
+# gcc -o const.o -c const.c
+# gcc -o hello.out func.o main.o const.o
