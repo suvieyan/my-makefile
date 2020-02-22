@@ -731,3 +731,149 @@ test :
 # new=>cmd-new
 ```
 
+## 7.条件判断语句
+### 1.支持条件判断
+- 可以根据条件的值决定make是否执行
+- 可以比较不同的变量或者变量和常量值
+
+**注意：** 可以控制make实际执行的语句， 不能控制规则中命令的执行
+
+### 2.条件判断关键字
+
+- ifeq: 是否相等
+- ifneq: 是否不相等
+- ifdef: 判断变量是否有值
+- ifndef: 判断变量是否没值
+
+if语句else以及endif都是4个空格
+
+```makefile
+.PHONY : test
+var1 := A
+var2 := $(var1)
+var3 := 
+
+test:
+    ifeq ($(var1),$(var2))
+		@echo "var1==var2"
+    else
+		@echo "var1!=var2"
+    endif
+
+
+    ifneq ($(var2),)
+		@echo "var2 is not empty"
+    else
+		@echo "var2 is empty"
+    endif
+
+    ifdef var2
+		@echo "var2 is not empty"
+    else
+		@echo "var2 is empty"
+    endif
+
+    ifndef var3
+		@echo "var3 is empty"
+    else
+		@echo "var3 is not empty"
+    endif
+
+# 执行结果
+# var1==var2
+# var2 is not empty
+# var2 is not empty
+# var3 is empty
+
+```
+
+### 3.工程经验
+
+- 条件判断语句之前可以有空格， 但不能有tab字符， 可能会报错【make: else: No such file or directory】
+- 在条件判断语句中不要使用自动变量
+- 一条完整的条件语句必须位于同一个makefile中
+- 条件判断类似于C语言的宏， 预处理阶段有效， 执行阶段无效
+- make在加载Makefile时
+  - 首先计算表达式的值
+  - 根据判断语句的表达式决定执行的内容
+
+```makefile
+.PHONY : test
+var1 := 
+var2 := $(var1)
+var3 = 
+var4 = $(var3)
+
+test:
+    ifdef var1
+		@echo "var1 is defined"
+    else
+		@echo "var2 is not defined"
+    endif
+
+    ifdef var2
+		@echo "var1 is defined"
+    else
+		@echo "var2 is not defined"
+    endif
+
+    ifeq ($(var1),$(var2))
+		@echo "var1==var2"
+    else
+		@echo "var1!=var2"
+    endif
+
+    ifdef var3
+		@echo "var3 is defined"
+    else
+		@echo "var3 is not defined"
+    endif
+
+    ifdef var4
+		@echo "var4 is defined"
+    else
+		@echo "var4 is not defined"
+    endif
+
+    ifeq ($(var3),$(var4))
+		@echo "var3==var4"
+    else
+		@echo "var3!=var4"
+    endif
+
+# 执行结果
+# var2 is not defined
+# var2 is not defined
+# var1==var2
+# var3 is not defined
+# var4 is defined
+# var3==var4
+# 说明： = 是递归赋值， 只能判断var3无值， var4 不能确定， 因此var4 是defined
+
+
+```
+
+
+
+
+
+## 8.函数定义及调用
+
+## 9.变量和函数的综合实例
+
+## 10.自动生成依赖关系
+
+## 11.make的隐式规则
+
+## 12.make中的路径搜索
+
+## 13.路径搜索的综合实例
+
+## 14.打造专业的编译环境
+
+## 15.模块独立编译的支持
+
+## 16.第三方库的使用支持
+
+
+
