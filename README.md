@@ -853,13 +853,284 @@ test:
 
 ```
 
-
-
-
-
 ## 8.函数定义及调用
 
+### 1.makefile 支持函数的概念
+
+- make解释器提供函数供Makefile调用
+- Makefile支持自定义函数实现
+- 通过define关键字实现自定义函数
+
+### 2.自定义函数本质
+
+- 本质是一个多行变量， 无法直接调用
+- 是一种过程调用， 没有任何返回值
+- 用于定义命令集合， 并应用于规则中
+
+### 3.demo1 函数的本质就是多行变量
+
+```makefile
+.PHONY : test
+
+define func1
+	@echo "my name is $(0)"
+endef
+
+define func2
+	@echo "my name is $(0)"
+	@echo "my age is $(1)"
+	@echo "my bith is $(2)"
+endef
+
+var := $(call func1)
+new := $(func1)
+
+test :
+	@echo "new ==> $(new)"
+	@echo "var ==> $(var)"
+	$(call func1)  # 1.替换参数，2.多行变量替换到此处
+	$(call func2, 12)
+
+# define 用于多行变量， 把func1 作为变量来处理
+# call 作用就是把相应位置换成实参
+# $(call func1) 作用 # 1.替换参数，2.多行变量替换到此处
+```
+
+### 4.make解释器的预定义函数
+
+- make的函数提供处理文件名， 变量和命令的函数
+- 可以在需要的地方调用函数来处理指定的参数
+- 函数在调用的地方被替换为处理结果
+
+### 5.自定义函数和预定义函数本质剖析
+
+- makefile 不支持真正意义上的自定义函数
+- 自定义函数的本质是多行变量
+- 预定义的call函数在调用时将参数传递给多行变量
+- 自定义函数是call函数的实参， 并在call中被执行
+
+### 6.demo 自定义函数是模拟
+
+```makefile
+.PHONY : test
+
+define func1
+	@echo "my name is $(0)"
+endef
+
+func2 := @echo "my name is $(0)"
+
+new := $(abspath ./)
+
+var1 := $(call func1)
+var2 := $(call func2)
+var3 := $(abspath test.cpp)
+
+
+test :
+	@echo "new ==> $(new)"
+	$(call func1)
+	$(call func2)
+
+	@echo "var1 ==> $(var1)"
+	@echo "var2 ==> $(var2)"
+	@echo "var3 ==> $(var3)"
+
+# 结果：
+# func1 是自定义函数
+# fun2 是普通变量
+# new ==> /Users/yanwallis/Documents/cpp-projects/my-makefile/06函数
+# my name is func1
+# my name is
+
+# var1 ==>        @echo my name is func1
+# var2 ==> @echo my name is 
+# var3 ==> /Users/yanwallis/Documents/cpp-projects/my-makefile/06函数/test.cpp
+```
+
+### 7.小结
+
+- make解释器提供了一系列函数供Makefile调用
+- 自定义函数是一个多行变量， 无法直接调用
+- 自定义函数用于定义命令集合， 并应用于规则中
+- 预定义的call函数在调用时将参数传递给多行变量
+- 自定义函数是call函数实参， 并在call中被执行
+
+
+
 ## 9.变量和函数的综合实例
+
+
+
+### 1.需求
+
+- 自动生成target文件夹存放可执行文件
+- 自动生成objs文件夹存放编译生成的目标文件（*.o)
+- 支持调试版本的编译选项
+- 考虑代码的扩展性
+
+### 2.工具
+
+- $(wildcard_pattern): 获取当前工作目录中满足`_pattern`的文件或者目录列表
+- `$(addprefix_prefix ,_names)` :  给名字列表`_names` 中每个名字前加前缀  _prefix
+
+### 3.关键技巧
+
+1.自动获取当前目录下源文件列表（函数调用）
+
+```makefile
+SRCS := $(wildcard *.c)
+```
+
+2.根据源文件列表生成 目标文件列表（变量的替换）
+
+```makefile
+OBJS := $(SRCS:.c=.o)
+```
+
+3.对每一个目标文件列表加上路径前缀（函数调用）
+
+```makefile
+OBJS := $(addprefix path/, $(OBJS))
+```
+
+### 4.demo
+
+```makefile
+CC := gcc
+MKDIR := mkdir
+RM := rm -rf
+
+DIR_OBJS := objs
+DIR_TARGET := target
+
+DIRS := $(DIR_OBJS) $(DIR_TARGET)
+
+TARGET := $(DIR_TARGET)/hello_makefile.out
+# 得到源文件的文件列表， func.c main.c
+SRCS := $(wildcard *.c)
+# 值替换， func.o， main.o
+OBJS := $(SRCS:.c=.o)
+
+# objs/func.o objs/main.o
+OBJS := $(addprefix $(DIR_OBJS)/, $(OBJS))
+
+.PHONY : rebuild clean all
+
+$(TARGET) : $(DIRS) $(OBJS)
+	$(CC) -o $@ $(OBJS)
+	@echo "Target File ==> $@"
+
+$(DIRS) :
+	$(MKDIR) $@
+
+$(DIR_OBJS)/%.o : %.c
+	$(CC) -o $@ -c $^
+
+rebuild : clean all
+
+all : $(TARGET)
+
+clean :
+	@echo "clean"
+	$(RM) $(DIRS)
+
+# 执行结果
+# gcc -o objs/const.o -c const.c
+# gcc -o objs/func.o -c func.c
+# gcc -o objs/main.o -c main.c
+# gcc -o target/hello_makefile.out objs/const.o objs/func.o objs/main.o
+# Target File ==> target/hello_makefile.out
+
+# yandeMacBook-Pro:07变量和函数实战 yanwallis$ ls
+# Makefile        const.c         func.c          main.c          objs            target
+# yandeMacBook-Pro:07变量和函数实战 yanwallis$ cd target/
+# yandeMacBook-Pro:target yanwallis$ ls
+# hello_makefile.out
+# yandeMacBook-Pro:target yanwallis$ ./hello_makefile.out 
+# void foo(): hello makefile
+
+```
+
+### 5.编译选项功能实现
+
+有debug 参数
+
+`make DEBUG:=true`
+
+```makefile
+CC := gcc
+MKDIR := mkdir
+RM := rm -rf
+
+DIR_OBJS := objs
+DIR_TARGET := target
+
+DIRS := $(DIR_OBJS) $(DIR_TARGET)
+
+TARGET := $(DIR_TARGET)/hello_makefile.out
+# 得到源文件的文件列表， func.c main.c
+SRCS := $(wildcard *.c)
+# 值替换， func.o， main.o
+OBJS := $(SRCS:.c=.o)
+
+# objs/func.o objs/main.o
+OBJS := $(addprefix $(DIR_OBJS)/, $(OBJS))
+
+.PHONY : rebuild clean all
+
+$(TARGET) : $(DIRS) $(OBJS)
+	$(CC) -o $@ $(OBJS)
+	@echo "Target File ==> $@"
+
+$(DIRS) :
+	$(MKDIR) $@
+
+$(DIR_OBJS)/%.o : %.c
+    ifeq ($(DEBUG), true)
+		$(CC) -o $@ -g -c $^
+    else
+	    $(CC) -o $@ -c $^
+    endif
+
+rebuild : clean all
+
+all : $(TARGET)
+
+clean :
+	@echo "clean"
+	$(RM) $(DIRS)
+
+# 执行结果
+# gcc -o objs/const.o -c const.c
+# gcc -o objs/func.o -c func.c
+# gcc -o objs/main.o -c main.c
+# gcc -o target/hello_makefile.out objs/const.o objs/func.o objs/main.o
+# Target File ==> target/hello_makefile.out
+
+# yandeMacBook-Pro:07变量和函数实战 yanwallis$ ls
+# Makefile        const.c         func.c          main.c          objs            target
+# yandeMacBook-Pro:07变量和函数实战 yanwallis$ cd target/
+# yandeMacBook-Pro:target yanwallis$ ls
+# hello_makefile.out
+# yandeMacBook-Pro:target yanwallis$ ./hello_makefile.out 
+# void foo(): hello makefile
+
+```
+
+
+
+### 6.makefile 语法检查
+
+Makefile语法经常会有问题， 用于检查
+
+```
+cat -etv Makefile
+```
+
+
+
+
 
 ## 10.自动生成依赖关系
 

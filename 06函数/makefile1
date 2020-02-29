@@ -1,0 +1,24 @@
+.PHONY : test
+
+define func1
+	@echo "my name is $(0)"
+endef
+
+define func2
+	@echo "my name is $(0)"
+	@echo "my age is $(1)"
+	@echo "my bith is $(2)"
+endef
+
+var := $(call func1)
+new := $(func1)
+
+test :
+	@echo "new ==> $(new)"
+	@echo "var ==> $(var)"
+	$(call func1)  # 1.替换参数，2.多行变量替换到此处
+	$(call func2, 12)
+
+# define 用于多行变量， 把func1 作为变量来处理
+# call 作用就是把相应位置换成实参
+# $(call func1) 作用 # 1.替换参数，2.多行变量替换到此处
