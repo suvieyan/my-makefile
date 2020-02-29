@@ -1134,6 +1134,292 @@ cat -etv Makefile
 
 ## 10.自动生成依赖关系
 
+### 1.问题
+
+思考：
+
+- 目标文件是否只依赖源文件
+- 编译器如何编译源文件和头文件
+
+编译行为带来的缺陷
+
+- 预处理器将头文件中的代码直接插入到源文件
+- 编译器只通过预处理后的源文件产生目标文件
+- 因此， 规则中以源文件为依赖， 命令可能无法执行， 如果我们更改了头文件没有响应到更新
+
+
+
+### 2.自动生成依赖关系demo1
+
+```shell
+yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ ls
+func.c          func.h          main.c          makefile
+```
+
+#### 1.func.h
+
+```c
+#ifndef FUNC_H
+#define FUNC_H
+
+#define HELLO "hello yan"
+
+void foo();
+
+#endif
+```
+
+
+
+#### 2.func.c
+
+```c
+#include <stdio.h>
+#include "func.h"
+
+void foo(){
+    printf("void foo(): %s\n", HELLO);
+}
+```
+
+
+
+#### 3.Main.c
+
+```c
+#include <stdio.h>
+#include "func.h"
+
+int main(){
+    foo();
+    return 0;
+}
+```
+
+#### 4.makefile
+
+```makefile
+OBJS := func.o main.o
+
+hello.out : $(OBJS)
+	@gcc -o $@ $^
+	@echo "Target File ==> $^"
+
+
+$(OBJS) : %.o:%.c
+	@gcc -o $@ -c $^
+
+# 
+# yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ make
+# Target File ==> func.o main.o
+# 更改头文件， 不会重新编译
+# yandeMacBook-Pro:08自动生成依赖关系
+# make: `hello.out' is up to date.
+```
+
+存在问题： 当func.h 头文件改变时， 不会影响hello.out重新编译
+
+#### 5.makefile 更改版1
+
+```makefile
+OBJS := func.o main.o
+
+hello.out : $(OBJS)
+	@gcc -o $@ $^
+	@echo "Target File ==> $^"
+
+
+$(OBJS) : %.o:%.c func.h
+	@gcc -o $@ -c $<
+
+# yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ make
+# Target File ==> func.o main.o
+# yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ make
+# Target File ==> func.o main.o
+# yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ 
+```
+
+存在问题：
+
+- 头文件作为依赖条件出现于每个目标对应的规则中
+- 当头文件改动， 任何源文件都会重新编译， 效率低下
+- 当项目中头文件多， Makefile很难维护
+
+
+
+#### 6.Makefile更改版2
+
+##### 方案：
+
+- 通过命令自动生成对头文件的依赖
+- 将生成的依赖自动包含进Makefile中
+- 当头文件改动后， 自动确认需要重新编译的文件
+
+##### 预备工作：
+
+- Linux sed命令
+- 编译器依赖生成选项` gcc -MM (gcc -M)`
+
+##### linux的sed命令
+
+- sed 是一个流编辑器， 用于流文本的修改
+- sed可用于流文本中的字符串替换
+- sed的字符串替换方法为：`sed 's:src:des:g'`
+
+```shell
+1.Sed 替换
+流： 输入输出中的文本
+将流重定向到sed中
+yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ echo "test=>abc+abc=abc" |sed "s:abc:xyz:g"
+test=>xyz+xyz=xyz
+
+2.sed正则表达式:替换匹配结果； 使用匹配的目标生成替换结果
+sed 's,\(.*\)\.o[ :]*,objs/\1.o: ,g'  # 把前面的流的.o之后无论是空格还是冒号， 找到匹配项拼接成 objs/目标
+
+yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ echo "main.o: main.c func.h"
+main.o: main.c func.h
+
+yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ echo "main.o: main.c func.h"|sed 's,\(.*\)\.o[ :]*,objs/\1.o: ,g'
+objs/main.o: main.c func.h
+
+yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ echo "/a/b/c/d/main.o: main.c func.h"|sed 's,\(.*\)\.o[ :]*,objs/\1.o: ,g'
+objs//a/b/c/d/main.o: main.c func.h
+
+```
+
+##### gcc 关键编译选项生成依赖关系
+
+- 获取目标的完整依赖关系：`gcc -M test.c`
+- 获取目标的部分依赖关系：`gcc -MM test.c`
+
+
+
+##### 命令综合使用
+
+```shell
+yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ gcc -M main.c
+main.o: main.c \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/stdio.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/_stdio.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/cdefs.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_symbol_aliasing.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_posix_availability.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/Availability.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/AvailabilityInternal.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/_types.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/machine/_types.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/i386/_types.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_pthread/_pthread_types.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_va_list.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/machine/types.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/i386/types.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_int8_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_int16_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_int32_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_int64_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_u_int8_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_u_int16_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_u_int32_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_u_int64_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_intptr_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_uintptr_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_size_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_null.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/stdio.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_off_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_ssize_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/secure/_stdio.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/secure/_common.h \
+  func.h
+yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ gcc -MM main.c
+main.o: main.c func.h
+yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ gcc -MM -E main.c
+main.o: main.c func.h
+yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ gcc -MM -E main.c | sed 's,\(.*\)\.o[ :]*,objs/\1.o: ,g'
+objs/main.o: main.c func.h
+yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ gcc -M -E main.c | sed 's,\(.*\)\.o[ :]*,objs/\1.o: ,g'
+objs/main.o: main.c \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/stdio.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/_stdio.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/cdefs.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_symbol_aliasing.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_posix_availability.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/Availability.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/AvailabilityInternal.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/_types.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/machine/_types.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/i386/_types.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_pthread/_pthread_types.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_va_list.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/machine/types.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/i386/types.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_int8_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_int16_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_int32_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_int64_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_u_int8_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_u_int16_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_u_int32_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_u_int64_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_intptr_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_uintptr_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_size_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_null.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/stdio.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_off_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/sys/_types/_ssize_t.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/secure/_stdio.h \
+  /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/usr/include/secure/_common.h \
+  func.h
+yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ 
+```
+
+
+
+##### 小技巧：拆分目标的依赖
+
+将目标的完整依赖拆分为多个部分依赖
+
+```makefile
+.PHONY : a b c
+# test 依赖a b c
+test:a b c
+	@echo "$^"
+	
+# 等价于
+.PHONY : a b c
+# test 依赖a b c
+test:a b
+test:b c
+test:
+	@echo "$^"
+	
+# yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ make
+# a b c
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## 11.make的隐式规则
 
 ## 12.make中的路径搜索

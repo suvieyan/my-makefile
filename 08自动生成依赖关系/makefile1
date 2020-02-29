@@ -1,0 +1,15 @@
+OBJS := func.o main.o
+
+hello.out : $(OBJS)
+	@gcc -o $@ $^
+	@echo "Target File ==> $^"
+
+
+$(OBJS) : %.o:%.c func.h
+	@gcc -o $@ -c $<
+
+# yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ make
+# Target File ==> func.o main.o
+# yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ make
+# Target File ==> func.o main.o
+# yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ 
