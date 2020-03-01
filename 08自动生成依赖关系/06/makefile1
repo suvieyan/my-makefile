@@ -1,0 +1,21 @@
+.PHONY : all
+
+include test.txt
+
+all:
+	@echo "this is $@"
+
+test.txt:
+	@echo "Creating $@ ..."
+	@echo "other:;@echo "this is other" " >test.txt
+
+# 创建test.txt 是一个规则， 搬入， 执行
+# yandeMacBook-Pro:06 yanwallis$ make
+# makefile:3: test.txt: No such file or directory
+# Creating test.txt ...
+# this is other
+
+# yandeMacBook-Pro:06 yanwallis$ make all
+# makefile:3: test.txt: No such file or directory
+# Creating test.txt ...
+# this is all

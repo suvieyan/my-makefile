@@ -1530,11 +1530,452 @@ clean :
 
 
 
+#### 10.把依赖文件生成到指定文件夹
 
+解决思路：
+
+当include发现.dep 不存在时：
+
+- 通过规则和命令创建deps文件夹
+- 将所有的.dep 文件创建到deps文件夹
+- .dep文件中记录目标文件的依赖关系
+
+##### 方案1：
+
+```makefile
+.PHONY : all clean
+
+MKDIR := mkdir
+RM := rm -rf
+CC := gcc
+
+DIR_DEPS := deps
+
+SRCS := $(wildcard *.c)
+DEPS := $(SRCS:.c=.dep)
+
+
+include $(DEPS)
+
+all: $(DIR_DEPS)
+	@echo "this is all"
+
+$(DIR_DEPS) :
+	$(MKDIR) $@
+
+%.dep : %.c
+	@echo "Creating $@ ..."
+	@set -e;\
+	$(CC) -MM -E $^ | sed 's,\(.*\)\.o[ :]*,objs/\1.o : ,g' >$@
+
+clean :
+	$(RM) $(DEPS)
+
+# 结果：
+# 先创建.dep 文件， 后生成deps 文件夹
+# yandeMacBook-Pro:05 yanwallis$ make all
+# makefile:13: func.dep: No such file or directory
+# makefile:13: main.dep: No such file or directory
+# Creating main.dep ...
+# Creating func.dep ...
+# mkdir deps
+# this is all
+yandeMacBook-Pro:05 yanwallis$ tree
+.
+├── deps
+├── func.c
+├── func.dep
+├── func.h
+├── main.c
+├── main.dep
+└── makefile
+
+```
+
+##### 方案2：
+
+```makefile
+.PHONY : all clean
+
+MKDIR := mkdir
+RM := rm -rf
+CC := gcc
+
+DIR_DEPS := deps
+
+SRCS := $(wildcard *.c)
+DEPS := $(SRCS:.c=.dep)
+DEPS := $(addprefix $(DIR_DEPS)/, $(DEPS))
+
+include $(DEPS)
+
+all:
+	@echo "this is all"
+
+$(DIR_DEPS) :
+	$(MKDIR) $@
+
+# 依赖DIR_DEPS ， 没有先创建DIR_DEPS 文件夹
+$(DIR_DEPS)/%.dep : $(DIR_DEPS) %.c
+	@echo "Creating $@ ..."
+	@set -e;\
+	$(CC) -MM -E $(filter %.c, $^) | sed 's,\(.*\)\.o[ :]*,objs/\1.o : ,g' >$@
+
+clean :
+	$(RM) $(DEPS)
+
+# 结果：
+# 先创建.dep 文件， 后生成deps 文件夹
+# yandeMacBook-Pro:05 yanwallis$ make all
+# makefile:13: func.dep: No such file or directory
+# makefile:13: main.dep: No such file or directory
+# Creating main.dep ...
+# Creating func.dep ...
+# mkdir deps
+# this is all
+
+```
+
+为什么一些.dep 依赖文件会被重复多次创建？判断
+
+##### 方案3：
+
+```makefile
+.PHONY : all clean
+
+MKDIR := mkdir
+RM := rm -rf
+CC := gcc
+
+DIR_DEPS := deps
+
+SRCS := $(wildcard *.c)
+DEPS := $(SRCS:.c=.dep)
+DEPS := $(addprefix $(DIR_DEPS)/, $(DEPS))
+
+include $(DEPS)
+
+all:
+	@echo "this is all"
+
+$(DIR_DEPS) :
+	$(MKDIR) $@
+
+# 当前目录是否有DIR_DEPS 文件夹， 没有指向创建依赖， 有， 不执行创建依赖
+ifeq ("$(wildcard $(DIR_DEPS))", "")
+# 依赖DIR_DEPS ， 没有先创建DIR_DEPS 文件夹
+$(DIR_DEPS)/%.dep : $(DIR_DEPS) %.c
+else
+$(DIR_DEPS)/%.dep : %.c
+endif 
+	@echo "Creating $@ ..."
+	@set -e;\
+	$(CC) -MM -E $(filter %.c, $^) | sed 's,\(.*\)\.o[ :]*,objs/\1.o : ,g' >$@
+
+clean :
+	$(RM) $(DEPS)
+
+# 结果：
+# 先创建.dep 文件， 后生成deps 文件夹
+# yandeMacBook-Pro:05 yanwallis$ make all
+# makefile:13: func.dep: No such file or directory
+# makefile:13: main.dep: No such file or directory
+# Creating main.dep ...
+# Creating func.dep ...
+# mkdir deps
+# this is all
+
+```
+
+
+
+##### 方案4
+
+```makefile
+.PHONY : all clean
+
+MKDIR := mkdir
+RM := rm -rf
+CC := gcc
+
+DIR_DEPS := deps
+
+SRCS := $(wildcard *.c)
+DEPS := $(SRCS:.c=.dep)
+DEPS := $(addprefix $(DIR_DEPS)/, $(DEPS))
+
+all:
+	@echo "this is all"
+
+# 对输入参数判断
+ifeq ("$(MKKECMDGOALS)", "all")
+include $(DEPS)
+endif
+
+ifeq ("$(MKKECMDGOALS)", "")
+include $(DEPS)
+endif
+
+
+
+$(DIR_DEPS) :
+	$(MKDIR) $@
+
+ifeq ("$(wildcard $(DIR_DEPS))", "")
+# 依赖DIR_DEPS ， 没有先创建DIR_DEPS 文件夹
+$(DIR_DEPS)/%.dep : $(DIR_DEPS) %.c
+else
+$(DIR_DEPS)/%.dep : %.c
+endif 
+	@echo "Creating $@ ..."
+	@set -e;\
+	$(CC) -MM -E $(filter %.c, $^) | sed 's,\(.*\)\.o[ :]*,objs/\1.o : ,g' >$@
+
+clean :
+	$(RM) $(DIR_DEPS)
+
+# 结果：
+# 先创建.dep 文件， 后生成deps 文件夹
+# yandeMacBook-Pro:05 yanwallis$ make all
+# makefile:13: func.dep: No such file or directory
+# makefile:13: main.dep: No such file or directory
+# Creating main.dep ...
+# Creating func.dep ...
+# mkdir deps
+# this is all
+
+```
+
+
+
+#### 11.include 暗黑操作
+
+##### 1.使用（-）不但关闭了include的警告， 同时关闭了错误， 当错误发生时， make将忽略这些错误
+
+##### 2.如果include 触发规则创建文件， 之后还发生了什么？
+
+```makefile
+.PHONY : all
+
+include test.txt
+
+all:
+	@echo "this is $@"
+
+test.txt:
+	@echo "Creating $@ ..."
+	@echo "other:;@echo "this is other" " >test.txt
+
+# 创建test.txt 是一个规则， 搬入， 执行
+# yandeMacBook-Pro:06 yanwallis$ make
+# makefile:3: test.txt: No such file or directory
+# Creating test.txt ...
+# this is other
+
+# yandeMacBook-Pro:06 yanwallis$ make all
+# makefile:3: test.txt: No such file or directory
+# Creating test.txt ...
+# this is all
+```
+
+##### 3.如果include包含的文件存在， 之后发生什么？
+
+1.先看文件是否有， 如果有
+
+2.查看文件规则的依赖的时间戳， 如果依赖比较新， 会执行该规则， 反之不执行
+
+```makefile
+.PHONY : all
+
+include test.txt
+
+all:
+	@echo "this is $@"
+
+# b.txt 时间戳比test.txt时间戳新， 会继续向下执行
+test.txt: b.txt
+	@echo "Creating $@ ..."
+
+# yandeMacBook-Pro:06 yanwallis$ tree
+# .
+# ├── b.txt
+# ├── makefile
+# ├── makefile1
+# └── test.txt
+
+# 0 directories, 4 files
+# yandeMacBook-Pro:06 yanwallis$ make all
+# Creating test.txt ...
+# this is all
+# yandeMacBook-Pro:06 yanwallis$ touch test.txt
+# yandeMacBook-Pro:06 yanwallis$ make all
+# this is all
+# yandeMacBook-Pro:06 yanwallis$ 
+```
+
+##### 4.include 会重新加载文件内容
+
+```makefile
+.PHONY : all
+
+include test.txt
+
+all:
+	@echo "$@ : $^"
+
+# b.txt 时间戳比test.txt时间戳新， 会继续向下执行
+test.txt: b.txt
+	@echo "Creating $@ ..."
+	@echo "all: c.txt">test.txt
+
+# yandeMacBook-Pro:06 yanwallis$ touch a.txt
+# yandeMacBook-Pro:06 yanwallis$ make all
+# all : a.txt
+# yandeMacBook-Pro:06 yanwallis$ touch b.txt
+# yandeMacBook-Pro:06 yanwallis$ make all
+# Creating test.txt ...
+# all : c.txt
+```
+
+5.include 总结
+
+- 当目标文件不存在
+  - 以文件名查找规则并执行
+  - 查找到规则中创建了目标文件
+    - 将创建成功的目标文件包含进当前Makefile
+- 当目标文件存在
+  - 将目标文件包含进当前Makefile
+  - 以目标文件名查找使用有相应规则
+    - 有， 比较规则的依赖关系， 决定是否执行规则的命令
+    - 无， 无操作
+
+
+
+#### 12.自动生成依赖关系demo
+
+当.dep 生成之后， 如果动态改变头文件依赖关系， make可能检测不到头文件改变 
+
+```makefile
+.PHONY : all clean rebuild
+
+MKDIR := mkdir
+RM := rm -rf
+CC := gcc
+
+DIR_DEPS := deps
+DIR_EXES := exes
+DIR_OBJS := objs
+
+DIRS := $(DIR_DEPS) $(DIR_EXES) $(DIR_OBJS)
+
+EXE := app.out
+EXE := $(addprefix $(DIR_EXES)/, $(EXE))
+
+SRCS := $(wildcard *.c)
+
+OBJS := $(SRCS:.c=.o)
+OBJS := $(addprefix $(DIR_OBJS)/, $(OBJS))
+
+DEPS := $(SRCS:.c=.dep)
+DEPS := $(addprefix $(DIR_DEPS)/, $(DEPS))
+
+all: $(DIR_OBJS) $(DIR_EXES) $(EXE)
+
+# 对输入参数判断
+ifeq ("$(MKKECMDGOALS)", "all")
+include $(DEPS)
+endif
+
+ifeq ("$(MKKECMDGOALS)", "")
+include $(DEPS)
+endif
+
+$(EXE) : $(OBJS)
+	$(CC) -o $@ $^
+	@echo "succeddful! Target=>$(EXE)"
+
+$(DIR_OBJS)/%.o : %.c
+	$(CC) -o $@ -c $(filter %.c, $^)
+
+
+$(DIRS) :
+	$(MKDIR) $@
+
+ifeq ("$(wildcard $(DIR_DEPS))", "")
+# 依赖DIR_DEPS ， 没有先创建DIR_DEPS 文件夹
+$(DIR_DEPS)/%.dep : $(DIR_DEPS) %.c
+else
+$(DIR_DEPS)/%.dep : %.c
+endif 
+	@echo "Creating $@ ..."
+	@set -e;\
+	$(CC) -MM -E $(filter %.c, $^) | sed 's,\(.*\)\.o[ :]*,objs/\1.o $@: ,g' >$@
+
+clean :
+	$(RM) $(DIRS)
+
+rebuild :
+	@$(MAKE) clean
+	@$(MAKE) all
+
+
+# yandeMacBook-Pro:07 yanwallis$ tree
+# .
+# ├── define.h
+# ├── func.c
+# ├── func.h
+# ├── main.c
+# ├── makefile
+# ├── new.h
+# └── other.h
+
+# 0 directories, 7 files
+# yandeMacBook-Pro:07 yanwallis$ make 
+# makefile:32: deps/func.dep: No such file or directory
+# makefile:32: deps/main.dep: No such file or directory
+# mkdir deps
+# Creating deps/main.dep ...
+# Creating deps/func.dep ...
+# mkdir objs
+# mkdir exes
+# gcc -o objs/func.o -c func.c
+# gcc -o objs/main.o -c main.c
+# gcc -o exes/app.out objs/func.o objs/main.o
+# succeddful! Target=>exes/app.out
+# yandeMacBook-Pro:07 yanwallis$ tree
+# .
+# ├── define.h
+# ├── deps
+# │   ├── func.dep
+# │   └── main.dep
+# ├── exes
+# │   └── app.out
+# ├── func.c
+# ├── func.h
+# ├── main.c
+# ├── makefile
+# ├── new.h
+# ├── objs
+# │   ├── func.o
+# │   └── main.o
+# └── other.h
+
+# 3 directories, 12 files
+
+
+```
 
 
 
 ## 11.make的隐式规则
+
+
+
+
+
+
+
+
 
 ## 12.make中的路径搜索
 

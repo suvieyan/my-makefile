@@ -1,0 +1,26 @@
+.PHONY : all
+
+include test.txt
+
+all:
+	@echo "this is $@"
+
+# b.txt 时间戳比test.txt时间戳新， 会继续向下执行
+test.txt: b.txt
+	@echo "Creating $@ ..."
+
+yandeMacBook-Pro:06 yanwallis$ tree
+.
+├── b.txt
+├── makefile
+├── makefile1
+└── test.txt
+
+0 directories, 4 files
+yandeMacBook-Pro:06 yanwallis$ make all
+Creating test.txt ...
+this is all
+yandeMacBook-Pro:06 yanwallis$ touch test.txt
+yandeMacBook-Pro:06 yanwallis$ make all
+this is all
+yandeMacBook-Pro:06 yanwallis$ 
