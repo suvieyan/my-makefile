@@ -1402,15 +1402,129 @@ test:
 
 
 
+#### 7.include关键字
+
+makefile 的include 关键字：
+
+- 类似于C语言的include
+- 将其他文件的内容原封不动的搬入当前文件
+
+Make对include关键字的处理方式：在当前目录或者指定目录搜索目标文件
+
+- 搜索成功：将目标文件内容搬入当前Makefile
+- 搜索失败：产生警告
+  - 以文件名作为目标查找并执行对应规则
+  - 当文件名对应的规则不存在时， 最终产生错误
+
+```makefile
+.PHONY :all
+
+include test.txt
+
+all:
+	@echo "this is $@"
+
+# test.txt:
+# 	@echo "test.txt"
+# 	@touch test.txt
+
+
+# 不存在， 执行test.txt 规则， touch 一个test.txt 文件
+# yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ make
+# makefile:3: test.txt: No such file or directory
+# test.txt
+# this is all
+
+# 在test.txt 当中定义规则
+# yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ make
+# this is other
+# yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ make all
+# this is all
+# yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ 
+```
 
 
 
+#### 8.makefile 中命令的执行机制
+
+- 规则中每个命令默认是在一个新的进程中执行（shell）
+- 可以通过连接符（；）将多个命令组合成一个新命令
+- 组合的命令一次在同一个进程被执行
+- Set -e 指定发生错误后立即退出执行
+
+```makefile
+.PHONY : all
+
+all:
+	set -e;\
+	mkdir test;\
+	cd test;\
+	mkdir  subtest
+
+# 连接符保证代码在一个进程执行
+# yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ make
+# set -e;\
+#         mkdir test;\
+#         cd test;\
+#         mkdir  subtest
+# ├── test
+# │   └── subtest
+```
 
 
 
+#### 9.自动生成依赖关系解决方案初步思路：
+
+- 通过gcc -MM 和sed 得到.dep依赖文件（目标的部分依赖）
+  - 技术点：规则中命令的连续执行
+- 通过include指令包含所有的.dep依赖文件
+  - 技术点：当.dep 依赖文件不存在时， 使用规则自动生成
+
+```makefile
+.PHONY : all clean
+
+MKDIR := mkdir
+RM := rm -rf
+
+SRCS := $(wildcard *.c)
+DEPS := $(SRCS:.c=.dep)
+
+# include $(DEPS)
+# 一般会产生警告， 使用- 没有警告
+-include $(DEPS)
+
+all:
+	@echo "this is all"
+
+%.dep : %.c
+	@echo "Creating $@ ..."
+	@set -e;\
+	$(CC) -MM -E $^ | sed 's,\(.*\)\.o[ :]*,objs/\1.o : ,g' >$@
+
+clean :
+	$(RM) $(DEPS)
 
 
+# yandeMacBook-Pro:04 yanwallis$ make
+# makefile:9: func.dep: No such file or directory
+# makefile:9: main.dep: No such file or directory
+# Creating main.dep ...
+# Creating func.dep ...
+# make: Nothing to be done for `objs/func.o'.
+# yandeMacBook-Pro:04 yanwallis$ tree
+# .
+# ├── func.c
+# ├── func.dep
+# ├── func.h
+# ├── main.c
+# ├── main.dep
+# └── makefile
 
+# 0 directories, 6 files
+# yandeMacBook-Pro:04 yanwallis$ 
+```
+
+思考： 如何组织依赖文件相关的规则与源码编译相关的规则， 进而行程完整的Makefile程序？
 
 
 

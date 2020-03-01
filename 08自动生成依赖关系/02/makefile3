@@ -1,0 +1,24 @@
+.PHONY :all
+
+include test.txt
+
+all:
+	@echo "this is $@"
+
+# test.txt:
+# 	@echo "test.txt"
+# 	@touch test.txt
+
+
+# 不存在， 执行test.txt 规则， touch 一个test.txt 文件
+# yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ make
+# makefile:3: test.txt: No such file or directory
+# test.txt
+# this is all
+
+# 在test.txt 当中定义规则
+# yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ make
+# this is other
+# yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ make all
+# this is all
+# yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ 

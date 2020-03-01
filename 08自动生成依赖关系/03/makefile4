@@ -1,0 +1,13 @@
+.PHONY : all
+
+all:
+	set -e;\
+	mkdir test;\
+	cd test;\
+	mkdir  subtest
+
+# yandeMacBook-Pro:08自动生成依赖关系 yanwallis$ make
+# set -e;\
+#         mkdir test;\
+#         cd test;\
+#         mkdir  subtest
