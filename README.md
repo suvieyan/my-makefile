@@ -1969,6 +1969,36 @@ rebuild :
 
 ## 11.make的隐式规则
 
+### 1.同一个目标的命令拆分写到不同地方
+
+会发生什么？被覆盖
+
+当Makefile出现同名目标
+
+- 依赖：所有依赖合并在一起， 成为最终依赖
+- 命令：
+  - 当多出出现同一目标的命令时， make发出警告
+  - 所有之前定义的命令被最后定义的命令覆盖
+
+```makefile
+.PHONY : all
+
+all:
+	@echo "command-1"
+
+VAR := test
+
+all:
+	@echo "all : $(VAR)"
+
+
+# 从上至下， 被覆盖
+# yandeMacBook-Pro:09make的隐式规则 yanwallis$ make
+# makefile:9: warning: overriding commands for target `all'
+# makefile:4: warning: ignoring old commands for target `all'
+# all : test
+```
+
 
 
 
