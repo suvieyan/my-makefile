@@ -1999,6 +1999,35 @@ all:
 # all : test
 ```
 
+### 2.什么是隐式规则？
+
+- make提供一些常用的， 例行的规则实现
+- 当相应目标的规则未提供时， make尝试使用隐式规则
+
+```makefile
+SRCS := $(wildcard *.c)
+OBJS := $(SRCS:.c=.o)
+
+app.out: $(OBJS)
+	$(CC) -o $@ $^
+	$(RM) $^
+	@echo "Target ==> $@"
+
+# yandeMacBook-Pro:09make的隐式规则 yanwallis$ make
+# cc    -c -o func.o func.c
+# cc    -c -o main.o main.c
+# cc -o app.out func.o main.o
+# rm -f func.o main.o
+# Target ==> app.out
+# yandeMacBook-Pro:09make的隐式规则 yanwallis$ ./app.out 
+# void foo(): hello yan
+# 生成.o 文件， .o依赖.c , 对应-c -o func.o func.c
+# CC 和RM  来自于make标准库
+
+```
+
+
+
 
 
 

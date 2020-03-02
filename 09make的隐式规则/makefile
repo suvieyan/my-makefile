@@ -1,17 +1,18 @@
-.PHONY : all
+SRCS := $(wildcard *.c)
+OBJS := $(SRCS:.c=.o)
 
-all:
-	@echo "command-1"
+app.out: $(OBJS)
+	$(CC) -o $@ $^
+	$(RM) $^
+	@echo "Target ==> $@"
 
-VAR := test
-
-all:
-	@echo "all : $(VAR)"
-
-include 1.mk
-
-# 从上至下， 被覆盖
 # yandeMacBook-Pro:09make的隐式规则 yanwallis$ make
-# makefile:9: warning: overriding commands for target `all'
-# makefile:4: warning: ignoring old commands for target `all'
-# all : test
+# cc    -c -o func.o func.c
+# cc    -c -o main.o main.c
+# cc -o app.out func.o main.o
+# rm -f func.o main.o
+# Target ==> app.out
+# yandeMacBook-Pro:09make的隐式规则 yanwallis$ ./app.out 
+# void foo(): hello yan
+# 生成.o 文件， .o依赖.c , 对应-c -o func.o func.c
+# CC 和RM  来自于make标准库
