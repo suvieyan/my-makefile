@@ -1,18 +1,18 @@
-SRCS := $(wildcard *.c)
-OBJS := $(SRCS:.c=.o)
+app.out :main func.o
+	$(CC) -lstdc++ -o $@ $^
 
-app.out: $(OBJS)
-	$(CC) -o $@ $^
-	$(RM) $^
-	@echo "Target ==> $@"
+.c.o :
+	@echo "my suffix rule1"
+	$(CC) -o $@ -c $^
 
+.c:
+	@echo "my suffix rule2"
+	$(CC) -o $@ -c $^
+
+# main 匹配了单后缀， func.o 匹配了双后缀
 # yandeMacBook-Pro:09make的隐式规则 yanwallis$ make
-# cc    -c -o func.o func.c
-# cc    -c -o main.o main.c
-# cc -o app.out func.o main.o
-# rm -f func.o main.o
-# Target ==> app.out
-# yandeMacBook-Pro:09make的隐式规则 yanwallis$ ./app.out 
-# void foo(): hello yan
-# 生成.o 文件， .o依赖.c , 对应-c -o func.o func.c
-# CC 和RM  来自于make标准库
+# my suffix rule2
+# cc -o main -c main.c
+# my suffix rule1
+# cc -o func.o -c func.c
+# cc -lstdc++ -o app.out main func.o

@@ -2069,15 +2069,49 @@ make: *** No targets specified and no makefile found.  Stop.
 
 
 
-5.
+### 5.隐式规则禁用
+
+#### 1.局部禁用
+
+在makefile 中定义规则
+
+#### 2.全局禁用
+
+make -r 执行Makefile
+
+#### 3.后缀规则
+
+- 双后缀规则： 定义一对文件后缀（.c.o）通过.c来得到.o文件， 依赖.c
+- 单后缀规则： （.c）通过.c文件得到没有后缀的文件
 
 
 
+```makefile
+app.out :main func.o
+	$(CC) -lstdc++ -o $@ $^
 
+.c.o :
+	@echo "my suffix rule1"
+	$(CC) -o $@ -c $^
 
+.c:
+	@echo "my suffix rule2"
+	$(CC) -o $@ -c $^
 
+# main 匹配了单后缀， func.o 匹配了双后缀
+# yandeMacBook-Pro:09make的隐式规则 yanwallis$ make
+# my suffix rule2
+# cc -o main -c main.c
+# my suffix rule1
+# cc -o func.o -c func.c
+# cc -lstdc++ -o app.out main func.o
+```
 
+#### 4.后缀规则必将被模式规则取代
 
+- 不能有依赖
+- 必须有命令， 否则无意义
+- 后缀规则被模式规则取代
 
 
 
