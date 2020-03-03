@@ -2117,15 +2117,9 @@ app.out :main func.o
 
 ## 12.make中的路径搜索
 
-
-
-
-
 ### 1.VPATH 
 
 VPATH:指导make 如何查找文件， 可以赋值多个文件夹， 用分割符分开, 在Vpath当中有效， 但是会被覆盖
-
-
 
 ```makefile
 OBJS := func.o main.o
@@ -2147,6 +2141,56 @@ $(OBJS): %.o: %.c
 
 
 ```
+
+问题： 当多个文件夹同名的时候， 只会选择第一个获取到的
+
+
+
+### 2.vpath
+
+为不同类型的文件指定不同的搜索路径
+
+vpath: 指定匹配文件的搜索文件夹`vpath pattern dirctory` ; 也可以取消指定
+
+```makefile
+OBJS := func.o main.o
+INC := inc
+SRC := src
+VPATH := $(INC) $(SRC)
+CFLAGS := -I $(INC)
+
+
+vpath %.c $(SRC)
+# 在INC 搜索.h 文件
+vpath %.h $(INC)
+
+# 不再在SRC 搜索.c 文件
+vpath %.c
+
+# 取消所有的vpath设置
+# vpath
+
+
+
+
+hello.out: $(OBJS)
+	$(CC) -o $@ $^
+	@echo "Target File ==>$@"
+
+$(OBJS): %.o: %.c
+	$(CC) $(CFLAGS) -o $@ -c $<
+
+# 默认在当前文件夹
+# VPATH: 在指定路径下查找， 特制Makefile的命令查找路径
+# $(CC) -o $@ -c $< 会报错， gcc 找不到func.h 头文件， 需要-I $(INC) 指定
+
+#yandeMacBook-Pro:01 yanwallis$ ./hello.out 
+#void foo(): hello makefile
+```
+
+
+
+
 
 
 

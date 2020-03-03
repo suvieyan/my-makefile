@@ -4,6 +4,20 @@ SRC := src
 VPATH := $(INC) $(SRC)
 CFLAGS := -I $(INC)
 
+
+vpath %.c $(SRC)
+# 在INC 搜索.h 文件
+vpath %.h $(INC)
+
+# 不再在SRC 搜索.c 文件
+vpath %.c
+
+# 取消所有的vpath设置
+# vpath
+
+
+
+
 hello.out: $(OBJS)
 	$(CC) -o $@ $^
 	@echo "Target File ==>$@"
