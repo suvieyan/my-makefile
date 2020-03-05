@@ -2245,6 +2245,61 @@ make在当前文件夹搜索文件
 
 
 
+### 5.GPATH
+
+#### 1.make的坑
+
+app.out 不存在， 在当前创建
+
+当app.out 存在在vpath 存在， 
+
+- 目标和依赖的关系不变， 不会重新创建
+- 依赖改变在当前文件夹创建
+
+#### 2.GPATH
+
+GPATH：预定义变量， 指定目标文件夹
+
+- app.out 不存在， 在当前目录创建app.out
+
+- 当app.out 存在在vpath 存在， 
+  - 目标和依赖的关系不变， 不会重新创建
+  - 依赖改变在GPATH 文件夹创建
+
+```makefile
+GPATH := src
+VPATH := src
+CFLAGS := -I inc
+
+
+
+app.out: func.o main.o
+	$(CC) -o $@ $^
+	@echo "Target File ==>$@"
+
+%.o: %.c inc/func.h
+	$(CC) $(CFLAGS) -o $@ -c $<
+
+# yandeMacBook-Pro:03 yanwallis$ make
+# make: `src/app.out' is up to date.
+# make不合理的地方
+# 关于路径的处理很不合理， 需要人为
+```
+
+
+
+#### 3.建议
+
+尽量使用vpath
+
+在源代码文件夹尽量不放目标文件
+
+避免使用VPATH和GPATH
+
+
+
+
+
 
 
 
